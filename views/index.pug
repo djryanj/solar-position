@@ -1,0 +1,11 @@
+extends layout
+block content
+ h1 Solar Angle Calculator for Longitude #{result.longitude}, Latitude #{result.latitude}
+ each val, index in result
+  li= index + ": " + val
+ hr
+ div#version Solar Scraper Version: #{result.version}
+   br
+   | Running on #{result.hostname}
+   br
+   | Azure build #: #{result.azureBuildNumber}
