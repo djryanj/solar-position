@@ -47,12 +47,13 @@ router.post("/", userValidationRules(), validate, async (req, res, next) => {
 });
 
 function getValues(req) {
-    var rightNow = new Date();
+    let rightNow = new Date();
+    var re = /(^\d*)([hms]?$)/gi;
 
     // map values into their proper spots
     // provide some sane defaults for things not passed
     const newReq = req.method === "GET" ? req.query : req.body;
-    const values = {};
+    let values = {};
 
     values.latitude = newReq.latitude || 53.5461;
     values.longitude = newReq.longitude || -113.4938;
@@ -69,14 +70,14 @@ function getValues(req) {
     values.day = newReq.day  || rightNow.getDate();
     values.hour = newReq.hour || rightNow.getHours();
     // provide a couple of sensible defaults
-    if (values.hour == 24 && !newReq.minute) {
+    if (values.hour === 24) {
         values.minute = 0;
     } else if (!newReq.minute) {
         values.minute = rightNow.getMinutes();
     } else {
         values.minute = newReq.minute;
     }
-    if (values.hour == 24 && !newReq.second) {
+    if (values.hour === 24) {
         values.second = 0;
     } else if (!newReq.second) {
         values.second = rightNow.getSeconds();
@@ -87,7 +88,34 @@ function getValues(req) {
     values.azm_rotation = newReq.azm_rotation || 0;
     values.atmos_refract = newReq.atmos_refract || 0.5667;
     values.function = getFunction(newReq.function) || vars.SPA_ALL;
+    values.multi = newReq.multi;
+    values.start_hour = newReq.start_hour;
+    values.end_hour = newReq.end_hour;
+    if (!newReq.start_minute) {
+        values.start_minute = 0;
+    } else {
+        values.start_minute = newReq.start_minute;
+    }
+    if (values.end_hour === 24 || !newReq.end_minute) {
+        values.end_minute = 0;
+    } else {
+        values.end_minute = newReq.end_minute;
+    }
+    if (!newReq.start_second) {
+        values.start_second = 0;
+    } else {
+        values.start_second = newReq.start_second;
+    }
+    if (values.end_hour === 24) {
+        values.end_second = 0;
+    } else {
+        values.end_second = newReq.end_second;
+    }
 
+    values.interval = [...newReq.interval.matchAll(re)]; // this needs testing
+    console.log(values.interval);
+
+// multi, start_hour, end_hour, start_minute, end_minute, start_second, end_second, interval
     return values;
 }
 

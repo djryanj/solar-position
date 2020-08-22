@@ -255,18 +255,14 @@ const userValidationRules = () => {
             req
         }) => {
             const newReq = req.method === "GET" ? req.query : req.body;
-            if (value < 0 || value > 24) {
-                throw new Error('start_hour must be an integer between 0 and 24.');
+            if (value < 0 || value > 23) {
+                throw new Error('start_hour must be an integer between 0 and 23.');
             } else if (newReq.hour) {
                 throw new Error('hour cannot be used with start_hour.');
             } else if (newReq.end_hour === undefined) {
                 throw new Error('end_hour must be supplied if start_hour is used.');
             } else if (value > newReq.end_hour) {
                 throw new Error('end_hour must be after start_hour.');
-            } else if (newReq.start_minute && (value == 24 && newReq.start_minute > 0)) {
-                throw new Error('start_minute must be 0 (or omitted) if start_hour is 24.');
-            } else if (newReq.start_second && (value == 24 && newReq.start_second > 0)) {
-                throw new Error('start_second must be 0 (or omitted) if start_hour is 24.');
             } else {
                 return true;
             }
@@ -304,7 +300,7 @@ const userValidationRules = () => {
             if (value < 0 || value > 59) {
                 throw new Error('start_second must be an integer between 0 and 59.');
             } else if (newReq.start_hour === undefined){
-                    throw new Error('start_hour is required when start_second is supplied.');
+                throw new Error('start_hour is required when start_second is supplied.');
             } else if (newReq.end_hour === undefined) {
                 throw new Error('end_hour is required when start_second is supplied.');
             } else if (newReq.end_minute === undefined) {
@@ -315,15 +311,13 @@ const userValidationRules = () => {
                 throw new Error('second cannot be used with start_second.');
             } else if (newReq.end_second === undefined) {
                 throw new Error('end_second must be supplied if start_second is used.');
-            } else if (value > newReq.end_second && newReq.start_minute == newReq.end_minute) { // this is loose type evaluated because end_minute hasn't been processed yet
-                throw new Error('end_second must be after start_second in the same minute.');
             } else {
                 return true;
             }
         }).optional()
         .toInt(),
         check('end_hour')
-        .isInt().withMessage('start_hour must be an integer between 0 and 24.').bail()
+        .isInt().withMessage('end_hour must be an integer between 0 and 24.').bail()
         .custom((value, {
             req
         }) => {
@@ -353,6 +347,10 @@ const userValidationRules = () => {
                 throw new Error('end_hour is required when end_minute is supplied.');
             } else if (newReq.minute) {
                 throw new Error('minute cannot be used with end_minute.');
+            } else if (value < newReq.start_minute && (newReq.start_hour == newReq.end_hour)) {
+                throw new Error('end_minute must be after start_minute in the same hour.');
+            } else if (value > 0 && newReq.end_hour === 24) {
+                throw new Error('end_minute must be 0 (or omitted) if end_hour is 24.')
             } else if (newReq.start_minute === undefined) {
                 throw new Error('start_minute must be supplied if end_minute is used.');
             } else {
@@ -380,6 +378,10 @@ const userValidationRules = () => {
                 throw new Error('second cannot be used with end_second.');
             } else if (newReq.start_second === undefined) {
                 throw new Error('start_second must be supplied if end_second is used.');
+            } else if (value < newReq.start_second && newReq.start_minute === newReq.end_minute) {
+                throw new Error('end_second must be after start_second in the same minute.');
+            } else if (value > 0 && newReq.end_hour === 24) {
+                throw new Error('end_second must be 0 (or omitted) if end_hour is 24.')
             } else {
                 return true;
             }
@@ -397,11 +399,11 @@ const userValidationRules = () => {
             if (newReq.multi === undefined) {
                 throw new Error('interval can only be used when multi=true.');
             } else if (lastChar === 'h' && (intervalNumber > 24 || intervalNumber < 1)) {
-                throw new Error('interval must be between 1 and 24h.');
+                throw new Error('interval in hours (h) must be between 1 and 24.');
             } else if (lastChar === 'm' && (intervalNumber > 1440 || intervalNumber < 1)) {
-                throw new Error('interval must be between 1 and 1440m.');
+                throw new Error('interval in minutes (m) must be between 1 and 1440.');
             } else if (lastChar === 's' && (intervalNumber > 86400 || intervalNumber < 1)) {
-                throw new Error('interval must be between 1 and 86400s.');
+                throw new Error('interval in seconds (s) must be between 1 and 86400.');
             } else {
                 return true;
             }
@@ -409,7 +411,7 @@ const userValidationRules = () => {
     ]
 }
 
-// multi, start_hour, end_hour, start_minute, end_minute, start_second, end_second, increment
+// multi, start_hour, end_hour, start_minute, end_minute, start_second, end_second, interval
 
 const validate = (req, res, next) => {
 
