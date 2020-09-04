@@ -10,3 +10,13 @@ a {
 #version {
   text-align: right;
 }
+
+#defs {
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+}
+
+#defs li {
+  margin-bottom: 10px;
+}

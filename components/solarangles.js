@@ -1,18 +1,19 @@
 'use strict';
 // This implements a node.js version of the Solar Position Algorithm as described by
 // https://www.nrel.gov/docs/fy08osti/34302.pdf
-const cheerio = require("cheerio");
-const axios = require("axios");
+// const cheerio = require("cheerio");
+// const axios = require("axios");
 const vars = require("./vars");
-const tai = require("t-a-i");
-const NodeCache = require( "node-cache" );
-const myCache = new NodeCache( { stdTTL: 86400 } );
+// const tai = require("t-a-i");
+// const NodeCache = require( "node-cache" );
+// //const { delete } = require("../routes");
+// const myCache = new NodeCache( { stdTTL: 86400 } );
 
 
-const fetchTerestrialTime = async () => {
-    const ttResult = await axios.get("https://data.iers.org/eris/eopOfToday/eopoftoday.php");
-    return cheerio.load(ttResult.data);
-};
+// const fetchTerestrialTime = async () => {
+//     const ttResult = await axios.get("https://data.iers.org/eris/eopOfToday/eopoftoday.php");
+//     return cheerio.load(ttResult.data);
+// };
 
 // const solarConst = 1367; //watts per meter
 
@@ -1070,37 +1071,37 @@ function spa_calculate(spa)
     }
 }
 
-const getAngles = async(year, month, day, hour, minute, second, tz, latitude, longitude, elevation, avg_pressure, avg_temperature, slope, azm_rotation, atmos_refract, func) => {
-    var rightNow = new Date();
+const getAngles = async(year, month, day, hour, minute, second, tz, latitude, longitude, elevation, avg_pressure, avg_temperature, slope, azm_rotation, atmos_refract, func, delta_ut1, delta_t) => {
+    // var rightNow = new Date();
     
     
-    // Since DUT1 is yanked from the web and technically speaking it's not an API service but a scrape from IERS,
-    // cache the value for a day and only scrape the web site when it expires. Realistically it could be 
-    // cached longer than that as DUT1 isn't updated very often. It's also arguably moot, but the calculations
-    // call for it in the SPA so why not.
+    // // Since DUT1 is yanked from the web and technically speaking it's not an API service but a scrape from IERS,
+    // // cache the value for a day and only scrape the web site when it expires. Realistically it could be 
+    // // cached longer than that as DUT1 isn't updated very often. It's also arguably moot, but the calculations
+    // // call for it in the SPA so why not.
 
-    // get DUT1 from the cache
-    //var delta_ut1 = myCache.get("dut1");
-    var delta_ut1 = -0.19553;
-    // wasn't in the cache, get it from the web
-    if (delta_ut1 == undefined) {
-        console.log("dut1 cache miss");
-        const $tt = await fetchTerestrialTime();
-        delta_ut1 = parseFloat($tt('table tbody tr:nth-child(3) td:nth-child(2)').text())/1000;
-        cached = myCache.set("dut1", delta_ut1, 86400);
-        console.log("dut1 Cached value: " + delta_ut1);
-    } else {
-        console.log("dut1 was in cache, using value: " + delta_ut1);
-    }
+    // // get DUT1 from the cache
+    // //var delta_ut1 = myCache.get("dut1");
+    // var delta_ut1 = -0.19553;
+    // // wasn't in the cache, get it from the web
+    // if (delta_ut1 === undefined) {
+    //     console.log("dut1 cache miss");
+    //     const $tt = await fetchTerestrialTime();
+    //     delta_ut1 = parseFloat($tt('table tbody tr:nth-child(3) td:nth-child(2)').text())/1000;
+    //     cached = myCache.set("dut1", delta_ut1, 86400);
+    //     console.log("dut1 Cached value: " + delta_ut1);
+    // } else {
+    //     console.log("dut1 was in cache, using value: " + delta_ut1);
+    // }
 
     const spa_test = {};
     
-    // note that the t-a-i package doesn't really do anything special for TAI values after 1961 and under the
-    // hood really is just returning a hard-coded value for this; I could hard code the value too but
-    // the hope is that if/when TAI gets updated again, the package will also update and this will continue
-    // to be correct with little more than a rebuild of the app. 
-    var offset = (tai.unixToAtomic(rightNow.getTime()) - rightNow.getTime())/1000;
-    var delta_t = (32.184 + offset) - delta_ut1;
+    // // note that the t-a-i package doesn't really do anything special for TAI values after 1961 and under the
+    // // hood really is just returning a hard-coded value for this; I could hard code the value too but
+    // // the hope is that if/when TAI gets updated again, the package will also update and this will continue
+    // // to be correct with little more than a rebuild of the app. 
+    // var offset = (tai.unixToAtomic(rightNow.getTime()) - rightNow.getTime())/1000;
+    // var delta_t = (32.184 + offset) - delta_ut1;
     // console.log("TAI offset: " + offset + "; delta T: " + delta_t + "; DUT1: " + delta_ut1 + "; func: " + func); 
 
     spa_test.year          = year;
@@ -1123,6 +1124,23 @@ const getAngles = async(year, month, day, hour, minute, second, tz, latitude, lo
     spa_test.function      = func;
 
     const result = spa_calculate(spa_test);
+    //console.log(result)
+    delete result.spa.year;
+    delete result.spa.month;
+    delete result.spa.day;
+    delete result.spa.timezone;
+    delete result.spa.longitude;
+    delete result.spa.latitude;
+    delete result.spa.elevation;
+    delete result.spa.avg_pressure;
+    delete result.spa.avg_temperature;
+    delete result.spa.slope;
+    delete result.spa.azm_rotaton;
+    delete result.spa.atmos_refract;
+    delete result.spa.function;
+    // delete result.spa.delta_ut1;
+    // delete result.spa.delta_t;
+    //console.log(result)
 
     // if (result.result === 0) {
         // console.log("Julian Day:",spa_test.jd);
@@ -1137,17 +1155,26 @@ const getAngles = async(year, month, day, hour, minute, second, tz, latitude, lo
         // console.log("Azimuth:",spa_test.azimuth);
         // console.log("Incidence:",spa_test.incidence);
 
-        var mins = 60.0 * (spa_test.sunrise - parseInt(spa_test.sunrise));
-        var secs = 60.0 * (mins - parseInt(mins));
+        let mins = 60.0 * (result.spa.sunrise - parseInt(result.spa.sunrise));
+        let secs = 60.0 * (mins - parseInt(mins));
+        result.spa.sunrise_hr = parseInt(result.spa.sunrise).toString().padStart(2, "0") + ":" + parseInt(mins).toString().padStart(2, "0") + ":" + parseInt(secs).toString().padStart(2, "0");
 
         // console.log("Sunrise: " + parseInt(spa_test.sunrise) + ":" + parseInt(mins) + ":" + parseInt(secs));
 
-        mins = 60.0 * (spa_test.sunset - parseInt(spa_test.sunset));
+        mins = 60.0 * (result.spa.sunset - parseInt(result.spa.sunset));
         secs = 60.0 * (mins - parseInt(mins));
+
+        result.spa.sunset_hr = parseInt(result.spa.sunset).toString().padStart(2, "0") + ":" + parseInt(mins).toString().padStart(2, "0") + ":" + parseInt(secs).toString().padStart(2, "0");
+
+        mins = 60.0 * (result.spa.suntransit - parseInt(result.spa.suntransit));
+        secs = 60.0 * (mins - parseInt(mins));
+
+        result.spa.suntransit_hr = parseInt(result.spa.suntransit).toString().padStart(2, "0") + ":" + parseInt(mins).toString().padStart(2, "0") + ":" + parseInt(secs).toString().padStart(2, "0");
 
         // console.log("Sunset: " + parseInt(spa_test.sunset) + ":" + parseInt(mins) + ":" + parseInt(secs));
         // spa_test.result = result.result;
-        return spa_test;
+        
+        return result.spa;
     // } else {
     //     console.log("ERROR: result: " + result.result); 
     //     spa_test.result = result.result;
